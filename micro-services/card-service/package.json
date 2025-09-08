@@ -1,0 +1,13 @@
+{
+  "name": "card-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/handlers/*.ts --bundle --outdir=dist/ --platform=node"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
