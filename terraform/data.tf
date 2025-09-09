@@ -29,4 +29,10 @@ data "aws_iam_policy_document" "lambda_register_user_execution" {
       aws_dynamodb_table.BankUserTable.arn
     ]
   }
+
+  statement {
+    effect = "Allow"
+    actions = [ "secretsmanager:GetSecretValue" ]
+    resources = [ aws_secretsmanager_secret.InfernoBankSecret.arn ]
+  }
 }

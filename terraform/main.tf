@@ -42,10 +42,11 @@ resource "aws_lambda_function" "CreateRegisterUserLmb" {
 
   environment {
     variables = {
-      BankUserTable: aws_dynamodb_table.BankUserTable.arn
+      BankUserTable : aws_dynamodb_table.BankUserTable.arn
+      secretBankName: aws_secretsmanager_secret.InfernoBankSecret.name
     }
   }
-  
+
   depends_on = [
     aws_iam_role_policy_attachment.attachForRegisterUserLmb,
     data.archive_file.registerUserLmb
@@ -117,11 +118,24 @@ resource "aws_api_gateway_deployment" "registerUserGtwDeploy" {
 //stage
 resource "aws_api_gateway_stage" "registerUserGtwStage" {
   deployment_id = aws_api_gateway_deployment.registerUserGtwDeploy.id
-  rest_api_id = aws_api_gateway_rest_api.registerUserGtw.id
-  stage_name = var.STAGE
+  rest_api_id   = aws_api_gateway_rest_api.registerUserGtw.id
+  stage_name    = var.STAGE
 }
 //url
 output "registerUserGtwUrl" {
   value = "${aws_api_gateway_stage.registerUserGtwStage.invoke_url}/${aws_api_gateway_resource.registerUserGtwResource.path_part}"
+}
+
+//adding secret manager
+resource "aws_secretsmanager_secret" "InfernoBankSecret" {
+  name        = "InfernoBankSecret"
+  description = "I am in hell and even in hell I keep a secret"
+}
+
+resource "aws_secretsmanager_secret_version" "InfernoBankSecretVersion" {
+  secret_id = aws_secretsmanager_secret.InfernoBankSecret.id
+  secret_string = jsonencode({
+    key : "$2a$12$tony0OEk29LEXpBoq0gFb.aYpmhOY9b3nR9rb8.kStD0whofFk/Iq"
+  })
 }
 
