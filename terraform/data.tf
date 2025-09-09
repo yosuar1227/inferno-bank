@@ -1,8 +1,14 @@
-//test archive file
+//register user archive file
 data "archive_file" "registerUserLmb" {
   type        = "zip"
   source_file = "${path.module}./micro-services/user-service/dist/${var.registerUserLmbName}.js"
   output_path = "lambda_register_user.zip"
+}
+
+data "archive_file" "loginUserLmb" {
+  type        = "zip"
+  source_file = "${path.module}./micro-services/user-service/dist/${var.loginUserLmbName}.js"
+  output_path = "lambda_login_user.zip"
 }
 
 data "aws_iam_policy_document" "assume_role" {
@@ -31,8 +37,24 @@ data "aws_iam_policy_document" "lambda_register_user_execution" {
   }
 
   statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
+  }
+}
+
+data "aws_iam_policy_document" "lambdaLoginUserExecution" {
+  statement {
     effect = "Allow"
-    actions = [ "secretsmanager:GetSecretValue" ]
-    resources = [ aws_secretsmanager_secret.InfernoBankSecret.arn ]
+    actions = [
+      "dynamodb:GetItem"
+    ]
+    resources = [aws_dynamodb_table.BankUserTable.arn]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
   }
 }

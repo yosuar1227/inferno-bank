@@ -52,3 +52,9 @@ variable "registerUserLmbName" {
   default = "register-user-lambda"
   description = "variable just for the name of the register user lambda in user service"
 }
+
+variable "loginUserLmbName" {
+  type = string
+  default = "login-user-lambda"
+  description = "variable just for the name of the login user lambda in user service"
+}

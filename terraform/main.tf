@@ -28,6 +28,18 @@ resource "aws_dynamodb_table" "BankUserTable" {
   }
 }
 
+//adding secret manager
+resource "aws_secretsmanager_secret" "InfernoBankSecret" {
+  name        = "InfernoBankSecret"
+  description = "I am in hell and even in hell I keep a secret"
+}
+
+resource "aws_secretsmanager_secret_version" "InfernoBankSecretVersion" {
+  secret_id = aws_secretsmanager_secret.InfernoBankSecret.id
+  secret_string = jsonencode({
+    key : "$2a$12$tony0OEk29LEXpBoq0gFb.aYpmhOY9b3nR9rb8.kStD0whofFk/Iq"
+  })
+}
 
 //User service ----- register user lambda
 resource "aws_lambda_function" "CreateRegisterUserLmb" {
@@ -43,7 +55,7 @@ resource "aws_lambda_function" "CreateRegisterUserLmb" {
   environment {
     variables = {
       BankUserTable : aws_dynamodb_table.BankUserTable.arn
-      secretBankName: aws_secretsmanager_secret.InfernoBankSecret.name
+      secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
     }
   }
 
@@ -126,16 +138,44 @@ output "registerUserGtwUrl" {
   value = "${aws_api_gateway_stage.registerUserGtwStage.invoke_url}/${aws_api_gateway_resource.registerUserGtwResource.path_part}"
 }
 
-//adding secret manager
-resource "aws_secretsmanager_secret" "InfernoBankSecret" {
-  name        = "InfernoBankSecret"
-  description = "I am in hell and even in hell I keep a secret"
+
+//User service ----- login user lambda
+resource "aws_lambda_function" "LoginUserLmb" {
+  filename         = data.archive_file.loginUserLmb.output_path
+  function_name    = var.loginUserLmbName
+  handler          = "${var.loginUserLmbName}.handler"
+  runtime          = var.defaultRunTime
+  timeout          = 900
+  memory_size      = 256
+  role             = aws_iam_role.roleForLoginUserLmb.arn
+  source_code_hash = data.archive_file.loginUserLmb.output_base64sha256
+
+  environment {
+    variables = {
+      BankUserTable : aws_dynamodb_table.BankUserTable.arn
+      secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
+    }
+  }
+
+  depends_on = [ 
+    aws_iam_role_policy_attachment.attachForLoginUserLmb,
+    data.archive_file.loginUserLmb
+  ]
 }
 
-resource "aws_secretsmanager_secret_version" "InfernoBankSecretVersion" {
-  secret_id = aws_secretsmanager_secret.InfernoBankSecret.id
-  secret_string = jsonencode({
-    key : "$2a$12$tony0OEk29LEXpBoq0gFb.aYpmhOY9b3nR9rb8.kStD0whofFk/Iq"
-  })
+resource "aws_iam_role_policy" "policyForLoginUserLmb" {
+  name   = "lambdaPolicyLoginUser"
+  policy = data.aws_iam_policy_document.lambdaLoginUserExecution.json
+  role   = aws_iam_role.roleForLoginUserLmb.id
+}
+
+resource "aws_iam_role" "roleForLoginUserLmb" {
+  name               = "executionForLoginUserLmb"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "attachForLoginUserLmb" {
+  role       = aws_iam_role.roleForLoginUserLmb.name
+  policy_arn = var.defaultPolicyArn
 }
 
