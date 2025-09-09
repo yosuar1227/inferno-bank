@@ -1,8 +1,8 @@
 //test archive file
-data "archive_file" "lambda_user_create_file" {
+data "archive_file" "registerUserLmb" {
   type        = "zip"
-  source_file = "${path.module}./micro-services/card-service/dist/test.js"
-  output_path = "testevent.zip"
+  source_file = "${path.module}./micro-services/user-service/dist/${var.registerUserLmbName}.js"
+  output_path = "lambda_register_user.zip"
 }
 
 data "aws_iam_policy_document" "assume_role" {
@@ -18,13 +18,15 @@ data "aws_iam_policy_document" "assume_role" {
   }
 }
 
-//for test easy lambda use this
-data "aws_iam_policy_document" "lambda_execution" {
+//for test easy lambda use this, also I do not if I will use this policy for all lambdas
+data "aws_iam_policy_document" "lambda_register_user_execution" {
   statement {
     effect = "Allow"
     actions = [
-      "dynamodb:GetItem"
+      "dynamodb:PutItem"
     ]
-    resources = ["*"]
+    resources = [
+      aws_dynamodb_table.BankUserTable.arn
+    ]
   }
 }
