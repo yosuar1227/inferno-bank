@@ -90,19 +90,25 @@ resource "aws_api_gateway_rest_api" "registerUserGtw" {
 resource "aws_api_gateway_resource" "registerUserGtwResource" {
   rest_api_id = aws_api_gateway_rest_api.registerUserGtw.id
   parent_id   = aws_api_gateway_rest_api.registerUserGtw.root_resource_id
+  path_part   = "user"
+}
+
+resource "aws_api_gateway_resource" "registerUserGtwResourceRegister" {
+  rest_api_id = aws_api_gateway_rest_api.registerUserGtw.id
+  parent_id   = aws_api_gateway_resource.registerUserGtwResource.id
   path_part   = "register"
 }
 
 resource "aws_api_gateway_method" "registerUserGtwMethod" {
-  resource_id   = aws_api_gateway_resource.registerUserGtwResource.id
   rest_api_id   = aws_api_gateway_rest_api.registerUserGtw.id
+  resource_id   = aws_api_gateway_resource.registerUserGtwResourceRegister.id
   http_method   = var.HTTP_METHOD_POST
   authorization = var.NONE_AUTH
 }
 //Coneting register user lambda with register user gateway
 resource "aws_api_gateway_integration" "lmbGtwIntegrationForRegisterUser" {
   rest_api_id             = aws_api_gateway_rest_api.registerUserGtw.id
-  resource_id             = aws_api_gateway_resource.registerUserGtwResource.id
+  resource_id             = aws_api_gateway_resource.registerUserGtwResourceRegister.id
   http_method             = aws_api_gateway_method.registerUserGtwMethod.http_method
   integration_http_method = var.HTTP_METHOD_POST
   type                    = var.AWS_PROXY
@@ -114,7 +120,7 @@ resource "aws_lambda_permission" "lmbGtwPermissionForRegisterUser" {
   action        = "lambda:InvokeFunction"
   function_name = var.registerUserLmbName
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_api_gateway_rest_api.registerUserGtw.execution_arn}/*/${var.HTTP_METHOD_POST}/${aws_api_gateway_resource.registerUserGtwResource.path_part}"
+  source_arn    = "${aws_api_gateway_rest_api.registerUserGtw.execution_arn}/*/${var.HTTP_METHOD_POST}/${aws_api_gateway_resource.registerUserGtwResource.path_part}/${aws_api_gateway_resource.registerUserGtwResourceRegister.path_part}"
   depends_on = [
     aws_lambda_function.CreateRegisterUserLmb
   ]
@@ -122,6 +128,20 @@ resource "aws_lambda_permission" "lmbGtwPermissionForRegisterUser" {
 //deploy
 resource "aws_api_gateway_deployment" "registerUserGtwDeploy" {
   rest_api_id = aws_api_gateway_rest_api.registerUserGtw.id
+
+  triggers = {
+    redeployment = sha1(jsonencode([
+      aws_api_gateway_resource.registerUserGtwResource.id,
+      aws_api_gateway_resource.registerUserGtwResourceRegister.id,
+      aws_api_gateway_method.registerUserGtwMethod.id,
+      aws_api_gateway_integration.lmbGtwIntegrationForRegisterUser.id
+    ]))
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
   depends_on = [
     aws_api_gateway_integration.lmbGtwIntegrationForRegisterUser,
     aws_lambda_permission.lmbGtwPermissionForRegisterUser
@@ -135,7 +155,7 @@ resource "aws_api_gateway_stage" "registerUserGtwStage" {
 }
 //url
 output "registerUserGtwUrl" {
-  value = "${aws_api_gateway_stage.registerUserGtwStage.invoke_url}/${aws_api_gateway_resource.registerUserGtwResource.path_part}"
+  value = "${aws_api_gateway_stage.registerUserGtwStage.invoke_url}/${aws_api_gateway_resource.registerUserGtwResource.path_part}/${aws_api_gateway_resource.registerUserGtwResourceRegister.path_part}"
 }
 
 
@@ -157,7 +177,7 @@ resource "aws_lambda_function" "LoginUserLmb" {
     }
   }
 
-  depends_on = [ 
+  depends_on = [
     aws_iam_role_policy_attachment.attachForLoginUserLmb,
     data.archive_file.loginUserLmb
   ]
