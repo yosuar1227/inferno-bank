@@ -47,9 +47,13 @@ data "aws_iam_policy_document" "lambdaLoginUserExecution" {
   statement {
     effect = "Allow"
     actions = [
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:Query"
     ]
-    resources = [aws_dynamodb_table.BankUserTable.arn]
+    resources = [
+      aws_dynamodb_table.BankUserTable.arn,
+      "${aws_dynamodb_table.BankUserTable.arn}/index/${var.SECONDARY_EMAIL_INDEX}"
+    ]
   }
 
   statement {

@@ -27,6 +27,16 @@ variable "rangeKeyForBankUserTable" {
   default = "document"
 }
 
+variable "emailKey" {
+  type = string
+  default = "email"
+}
+
+variable "SECONDARY_EMAIL_INDEX" {
+  type = string
+  default = "email-index"
+}
+
 variable "STAGE" {
   type = string
   default = "dev"
@@ -45,6 +55,12 @@ variable "AWS_PROXY" {
 variable "HTTP_METHOD_POST" {
   type = string
   default = "POST"
+}
+
+variable "AMAZON_API_COM" {
+  type = string
+  default = "apigateway.amazonaws.com"
+  description = "principal url for apigateway"
 }
 
 variable "registerUserLmbName" {

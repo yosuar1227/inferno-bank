@@ -1,5 +1,5 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb"
-import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb"
+import { DynamoDBDocumentClient, PutCommand, QueryCommand } from "@aws-sdk/lib-dynamodb"
 
 interface IDynamoCommand {
     tableName: string
@@ -30,6 +30,24 @@ export class DynamoService {
 
         } catch (error) {
             console.error("Error saving in dynamo db ", error)
+        }
+    }
+
+    async getByEmail(email: string) {
+        try {
+            const command = new QueryCommand({
+                TableName: process.env.BankUserTable || "",
+                IndexName: process.env.BankEmailIndex || "",
+                KeyConditionExpression: "email = :e",
+                ExpressionAttributeValues: {
+                    ":e": email
+                }
+            })
+
+            const response = await this.client.send(command)
+            return response.Items?.[0] ?? null
+        } catch (error) {
+            console.error("Error getting the dynamo db", error)
         }
     }
 
