@@ -57,12 +57,18 @@ variable "HTTP_METHOD_POST" {
   default = "POST"
 }
 
+variable "HTTP_METHOD_PUT" {
+  type = string
+  default = "PUT"
+}
+
 variable "AMAZON_API_COM" {
   type = string
   default = "apigateway.amazonaws.com"
   description = "principal url for apigateway"
 }
 
+//lambdas de user service
 variable "registerUserLmbName" {
   type = string
   default = "register-user-lambda"
@@ -73,4 +79,10 @@ variable "loginUserLmbName" {
   type = string
   default = "login-user-lambda"
   description = "variable just for the name of the login user lambda in user service"
+}
+
+variable "updateProfileLmbName" {
+  type = string
+  default = "update-profile-lambda"
+  description = "variable just fopr the name of the update profile user lambda in user service"
 }

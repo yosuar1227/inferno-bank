@@ -1,3 +1,4 @@
+//user service
 //register user archive file
 data "archive_file" "registerUserLmb" {
   type        = "zip"
@@ -9,6 +10,12 @@ data "archive_file" "loginUserLmb" {
   type        = "zip"
   source_file = "${path.module}./micro-services/user-service/dist/${var.loginUserLmbName}.js"
   output_path = "lambda_login_user.zip"
+}
+
+data "archive_file" "updateProfileLmb" {
+  type        = "zip"
+  source_file = "${path.module}./micro-services/user-service/dist/${var.updateProfileLmbName}.js"
+  output_path = "lambda_update_user_profile.zip"
 }
 
 data "aws_iam_policy_document" "assume_role" {
@@ -62,3 +69,24 @@ data "aws_iam_policy_document" "lambdaLoginUserExecution" {
     resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
   }
 }
+
+data "aws_iam_policy_document" "lambdaUpdateUserProfileExecution" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem"
+    ]
+    resources = ["*"]
+  }
+}
+
+//config for yosuar
+/*data "aws_iam_policy_document" "lambdaUpdateUserProfileExecution" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:GetItem"
+    ]
+    resources = ["*"]
+  }
+}*/

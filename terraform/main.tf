@@ -30,11 +30,11 @@ resource "aws_dynamodb_table" "BankUserTable" {
   }
 
   global_secondary_index {
-    name = var.SECONDARY_EMAIL_INDEX
-    hash_key = var.emailKey
+    name            = var.SECONDARY_EMAIL_INDEX
+    hash_key        = var.emailKey
     projection_type = "ALL"
-    read_capacity = 10
-    write_capacity = 10
+    read_capacity   = 10
+    write_capacity  = 10
   }
 
   lifecycle {
@@ -55,7 +55,7 @@ resource "aws_secretsmanager_secret_version" "InfernoBankSecretVersion" {
   })
 }
 
-//User service ----- register user lambda
+//User service ----- register user lambda 1
 resource "aws_lambda_function" "CreateRegisterUserLmb" {
   filename         = data.archive_file.registerUserLmb.output_path
   function_name    = var.registerUserLmbName //lambda name in aws console
@@ -78,18 +78,18 @@ resource "aws_lambda_function" "CreateRegisterUserLmb" {
     data.archive_file.registerUserLmb
   ]
 }
-
+//policy
 resource "aws_iam_role_policy" "policyForRegisterUserLmb" {
   name   = "lambdaRegisterUser"
   policy = data.aws_iam_policy_document.lambda_register_user_execution.json
   role   = aws_iam_role.roleForRegisterUserLmb.id
 }
-
+//role
 resource "aws_iam_role" "roleForRegisterUserLmb" {
   name               = "executionForRegisterUserLmb"
   assume_role_policy = data.aws_iam_policy_document.assume_role.json
 }
-
+//attachment
 resource "aws_iam_role_policy_attachment" "attachForRegisterUserLmb" {
   role       = aws_iam_role.roleForRegisterUserLmb.name
   policy_arn = var.defaultPolicyArn
@@ -209,46 +209,46 @@ resource "aws_iam_role_policy_attachment" "attachForLoginUserLmb" {
 }
 //User service ----- login user api gateway
 resource "aws_api_gateway_rest_api" "loginUserGtw" {
-  name = "loginUserRestApi"
+  name        = "loginUserRestApi"
   description = "rest api for login user"
 }
-
+//resource gateway
 resource "aws_api_gateway_resource" "loginUserRoot" {
   rest_api_id = aws_api_gateway_rest_api.loginUserGtw.id
-  parent_id = aws_api_gateway_rest_api.loginUserGtw.root_resource_id
-  path_part = "login"
+  parent_id   = aws_api_gateway_rest_api.loginUserGtw.root_resource_id
+  path_part   = "login"
 }
-
+//gtw method
 resource "aws_api_gateway_method" "loginUserGtwMethod" {
-  rest_api_id = aws_api_gateway_rest_api.loginUserGtw.id
-  resource_id = aws_api_gateway_resource.loginUserRoot.id
-  http_method = var.HTTP_METHOD_POST
+  rest_api_id   = aws_api_gateway_rest_api.loginUserGtw.id
+  resource_id   = aws_api_gateway_resource.loginUserRoot.id
+  http_method   = var.HTTP_METHOD_POST
   authorization = var.NONE_AUTH
 }
 //conecting login user lambda with the gateway
 resource "aws_api_gateway_integration" "lmbGtwLoginUserIntegration" {
-  rest_api_id = aws_api_gateway_rest_api.loginUserGtw.id
-  resource_id = aws_api_gateway_resource.loginUserRoot.id
-  http_method = aws_api_gateway_method.loginUserGtwMethod.http_method
+  rest_api_id             = aws_api_gateway_rest_api.loginUserGtw.id
+  resource_id             = aws_api_gateway_resource.loginUserRoot.id
+  http_method             = aws_api_gateway_method.loginUserGtwMethod.http_method
   integration_http_method = var.HTTP_METHOD_POST
-  type = var.AWS_PROXY
-  uri = aws_lambda_function.LoginUserLmb.invoke_arn
+  type                    = var.AWS_PROXY
+  uri                     = aws_lambda_function.LoginUserLmb.invoke_arn
 }
 //permissions
 resource "aws_lambda_permission" "lmbGtwLoginUserPermission" {
-  statement_id = "AllowExecutionFromAPIGateway"
-  action = "lambda:InvokeFunction"
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
   function_name = var.loginUserLmbName
-  principal = var.AMAZON_API_COM
-  source_arn = "${aws_api_gateway_rest_api.loginUserGtw.execution_arn}/*/${var.HTTP_METHOD_POST}/${aws_api_gateway_resource.loginUserRoot.path_part}"
-  depends_on = [ 
+  principal     = var.AMAZON_API_COM
+  source_arn    = "${aws_api_gateway_rest_api.loginUserGtw.execution_arn}/*/${var.HTTP_METHOD_POST}/${aws_api_gateway_resource.loginUserRoot.path_part}"
+  depends_on = [
     aws_lambda_function.LoginUserLmb
   ]
 }
 //deploy
 resource "aws_api_gateway_deployment" "loginUserGtwDeploy" {
   rest_api_id = aws_api_gateway_rest_api.loginUserGtw.id
-  depends_on = [ 
+  depends_on = [
     aws_api_gateway_integration.lmbGtwLoginUserIntegration,
     aws_lambda_permission.lmbGtwLoginUserPermission
   ]
@@ -256,11 +256,105 @@ resource "aws_api_gateway_deployment" "loginUserGtwDeploy" {
 //stage
 resource "aws_api_gateway_stage" "loginUserGtwStage" {
   deployment_id = aws_api_gateway_deployment.loginUserGtwDeploy.id
-  rest_api_id = aws_api_gateway_rest_api.loginUserGtw.id
-  stage_name = var.STAGE
+  rest_api_id   = aws_api_gateway_rest_api.loginUserGtw.id
+  stage_name    = var.STAGE
 }
 //url
 output "loginUserGtwUrl" {
   value = "${aws_api_gateway_stage.loginUserGtwStage.invoke_url}/${aws_api_gateway_resource.loginUserRoot.path_part}"
 }
 
+//User service -> update user profile lambda
+resource "aws_lambda_function" "UpdateUserProfileLmb" {
+  filename         = data.archive_file.updateProfileLmb.output_path
+  function_name    = var.updateProfileLmbName
+  handler          = "${var.updateProfileLmbName}.handler"
+  runtime          = var.defaultRunTime
+  timeout          = 900
+  memory_size      = 256
+  role             = aws_iam_role.UpdateUserProfileRole.arn
+  source_code_hash = data.archive_file.updateProfileLmb.output_base64sha256
+
+  depends_on = [
+    aws_iam_role_policy_attachment.attachUpdateUserProfile,
+    data.archive_file.updateProfileLmb
+  ]
+}
+//policy
+resource "aws_iam_role_policy" "UpdateUserProfilePolicy" {
+  name   = "lambdaUpdateUserProfile"
+  policy = data.aws_iam_policy_document.lambdaUpdateUserProfileExecution.json
+  role   = aws_iam_role.UpdateUserProfileRole.id
+}
+//role
+resource "aws_iam_role" "UpdateUserProfileRole" {
+  name               = "executionForUpdateUserProfile"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+//attachment
+resource "aws_iam_role_policy_attachment" "attachUpdateUserProfile" {
+  role       = aws_iam_role.UpdateUserProfileRole.name
+  policy_arn = var.defaultPolicyArn
+}
+/*****User service ----- update user profile api gateway*****/
+resource "aws_api_gateway_rest_api" "updateUserProfileGtw" {
+  name        = "updateUserProfileRestApi"
+  description = "rest api for update user profile"
+}
+//resource gateway -> profile path
+resource "aws_api_gateway_resource" "updateUserProfileRoot" {
+  rest_api_id = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  parent_id   = aws_api_gateway_rest_api.updateUserProfileGtw.root_resource_id
+  path_part   = "profile"
+}
+//resource gateway -> {user_id} path
+resource "aws_api_gateway_resource" "updateUserProfileUserId" {
+  rest_api_id = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  parent_id   = aws_api_gateway_resource.updateUserProfileRoot.id
+  path_part   = "{user_id}"
+}
+//gtw method
+resource "aws_api_gateway_method" "updateUserProfileMethodGtw" {
+  rest_api_id   = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  resource_id   = aws_api_gateway_resource.updateUserProfileUserId.id
+  http_method   = var.HTTP_METHOD_PUT
+  authorization = var.NONE_AUTH
+}
+//conecting update user profile lambda with the gateway
+resource "aws_api_gateway_integration" "lmbGtwUpdateUserProfileIntegration" {
+  rest_api_id             = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  resource_id             = aws_api_gateway_resource.updateUserProfileUserId.id
+  http_method             = aws_api_gateway_method.updateUserProfileMethodGtw.http_method
+  integration_http_method = var.HTTP_METHOD_POST
+  type                    = var.AWS_PROXY
+  uri                     = aws_lambda_function.UpdateUserProfileLmb.invoke_arn
+}
+//permissions
+resource "aws_lambda_permission" "updateUserProfileGtwPermission" {
+  statement_id = "AllowExecutionFromAPIGateway"
+  action       = "lambda:InvokeFunction"
+  function_name = var.updateProfileLmbName
+  principal = var.AMAZON_API_COM
+  source_arn = "${aws_api_gateway_rest_api.updateUserProfileGtw.execution_arn}/*/${var.HTTP_METHOD_PUT}/${aws_api_gateway_resource.updateUserProfileRoot.path_part}/${aws_api_gateway_resource.updateUserProfileUserId.path_part}"
+  depends_on = [ 
+    aws_lambda_function.UpdateUserProfileLmb
+  ]
+}
+//deploy
+resource "aws_api_gateway_deployment" "updateUserProfileGtwDeploy" {
+  rest_api_id = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  depends_on = [ 
+    aws_api_gateway_integration.lmbGtwUpdateUserProfileIntegration,
+    aws_lambda_permission.updateUserProfileGtwPermission
+  ]
+}
+//stage
+resource "aws_api_gateway_stage" "updateUserProfileStage" { 
+  deployment_id = aws_api_gateway_deployment.updateUserProfileGtwDeploy.id
+  rest_api_id = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  stage_name = var.STAGE
+}
+//url
+output "updateUserProfileGtwUrl" {
+  value = "${aws_api_gateway_stage.updateUserProfileStage.invoke_url}/${aws_api_gateway_resource.updateUserProfileRoot.path_part}/${aws_api_gateway_resource.updateUserProfileUserId.path_part}"
+}
