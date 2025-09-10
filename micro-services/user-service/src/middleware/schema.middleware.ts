@@ -12,7 +12,7 @@ export const schemaMiddleware = (
             const { error } = schema.validate(body)
             if (error) {
                 throw createHttpError.BadRequest(JSON.stringify({
-                    msg: "There is missing mandatory data > " + JSON.stringify(error)
+                    msg: "There is missing mandatory data or unknown data > " + JSON.stringify(error)
                 }))
             }
             return

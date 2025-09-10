@@ -5,6 +5,9 @@ import createHttpError from "http-errors";
 import { HashService } from "../hash/hash.js";
 import { SecretManager } from "../secret-manager/secret-manager.js";
 import httpErrorHandler from "@middy/http-error-handler";
+import jwt from "jsonwebtoken";
+import { schemaMiddleware } from "../middleware/schema.middleware.js";
+import { userLoginSchema } from "../schema/user.schema.js";
 
 const userLoginLambda = async (
   event: APIGatewayEvent
@@ -28,9 +31,20 @@ const userLoginLambda = async (
     throw createHttpError.Unauthorized("The email or password is incorrect ");
   }
 
+  //generate jwt token
+  const token = jwt.sign(
+    {
+      sub: user?.uuid || "",
+      email: user?.email || "",
+      name: user?.name || "",
+    },
+    saltValue,
+    { expiresIn: "1h" }
+  );
+
   return {
     statusCode: 200,
-    body: JSON.stringify({ msj: "user logged in successfully" }),
+    body: JSON.stringify({ msj: "user logged in successfully", token }),
     headers: {
       "Content-type": "application/json",
     },
@@ -46,4 +60,6 @@ const getSecretValue = async () => {
 
 export const handler = middy<APIGatewayEvent, APIGatewayProxyResult>(
   userLoginLambda
-).use(httpErrorHandler());
+)
+  .use(httpErrorHandler())
+  .use(schemaMiddleware(userLoginSchema));
