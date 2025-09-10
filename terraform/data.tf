@@ -74,9 +74,11 @@ data "aws_iam_policy_document" "lambdaUpdateUserProfileExecution" {
   statement {
     effect = "Allow"
     actions = [
-      "dynamodb:GetItem"
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:Query"
     ]
-    resources = ["*"]
+    resources = [aws_dynamodb_table.BankUserTable.arn]
   }
 }
 

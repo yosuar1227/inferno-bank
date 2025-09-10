@@ -275,6 +275,12 @@ resource "aws_lambda_function" "UpdateUserProfileLmb" {
   role             = aws_iam_role.UpdateUserProfileRole.arn
   source_code_hash = data.archive_file.updateProfileLmb.output_base64sha256
 
+   environment {
+    variables = {
+      BankUserTable : aws_dynamodb_table.BankUserTable.arn
+    }
+  }
+
   depends_on = [
     aws_iam_role_policy_attachment.attachUpdateUserProfile,
     data.archive_file.updateProfileLmb

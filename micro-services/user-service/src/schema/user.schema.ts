@@ -12,3 +12,8 @@ export const userLoginSchema = Joi.object({
     email: Joi.string().email().required(),
     password: Joi.string().required(),
 })
+
+export const updateUserSchema = Joi.object({
+    address: Joi.string().required(),
+    phone: Joi.number().required(),
+})
