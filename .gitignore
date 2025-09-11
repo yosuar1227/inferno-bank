@@ -18,6 +18,7 @@ crash.log
 # Terraform zips (ej: paquetes Lambda)
 terraform/*.zip
 terraform/credentials.txt
+terraform/provider.tf
 
 # Environment files
 .env
