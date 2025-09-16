@@ -1,4 +1,4 @@
-//user service
+//USER SERVICE LAMBDAS
 //register user archive file
 data "archive_file" "registerUserLmb" {
   type        = "zip"
@@ -17,6 +17,15 @@ data "archive_file" "updateProfileLmb" {
   source_file = "${path.module}./micro-services/user-service/dist/${var.updateProfileLmbName}.js"
   output_path = "lambda_update_user_profile.zip"
 }
+
+data "archive_file" "addUserAvatarLmb" {
+  type        = "zip"
+  source_file = "${path.module}./micro-services/user-service/dist/${var.addUserAvatarLmbName}.js"
+  output_path = "lambda_add_user_avatar.zip"
+}
+//END OF USER SERVICE
+
+
 
 data "aws_iam_policy_document" "assume_role" {
   statement {
@@ -79,6 +88,20 @@ data "aws_iam_policy_document" "lambdaUpdateUserProfileExecution" {
       "dynamodb:Query"
     ]
     resources = [aws_dynamodb_table.BankUserTable.arn]
+  }
+
+   statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
+  }
+}
+
+data "aws_iam_policy_document" "lambdaAddUserAvatarExecution" {
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
   }
 }
 

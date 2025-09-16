@@ -275,9 +275,10 @@ resource "aws_lambda_function" "UpdateUserProfileLmb" {
   role             = aws_iam_role.UpdateUserProfileRole.arn
   source_code_hash = data.archive_file.updateProfileLmb.output_base64sha256
 
-   environment {
+  environment {
     variables = {
       BankUserTable : aws_dynamodb_table.BankUserTable.arn
+      secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
     }
   }
 
@@ -337,30 +338,70 @@ resource "aws_api_gateway_integration" "lmbGtwUpdateUserProfileIntegration" {
 }
 //permissions
 resource "aws_lambda_permission" "updateUserProfileGtwPermission" {
-  statement_id = "AllowExecutionFromAPIGateway"
-  action       = "lambda:InvokeFunction"
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
   function_name = var.updateProfileLmbName
-  principal = var.AMAZON_API_COM
-  source_arn = "${aws_api_gateway_rest_api.updateUserProfileGtw.execution_arn}/*/${var.HTTP_METHOD_PUT}/${aws_api_gateway_resource.updateUserProfileRoot.path_part}/${aws_api_gateway_resource.updateUserProfileUserId.path_part}"
-  depends_on = [ 
+  principal     = var.AMAZON_API_COM
+  source_arn    = "${aws_api_gateway_rest_api.updateUserProfileGtw.execution_arn}/*/${var.HTTP_METHOD_PUT}/${aws_api_gateway_resource.updateUserProfileRoot.path_part}/${aws_api_gateway_resource.updateUserProfileUserId.path_part}"
+  depends_on = [
     aws_lambda_function.UpdateUserProfileLmb
   ]
 }
 //deploy
 resource "aws_api_gateway_deployment" "updateUserProfileGtwDeploy" {
   rest_api_id = aws_api_gateway_rest_api.updateUserProfileGtw.id
-  depends_on = [ 
+  depends_on = [
     aws_api_gateway_integration.lmbGtwUpdateUserProfileIntegration,
     aws_lambda_permission.updateUserProfileGtwPermission
   ]
 }
 //stage
-resource "aws_api_gateway_stage" "updateUserProfileStage" { 
+resource "aws_api_gateway_stage" "updateUserProfileStage" {
   deployment_id = aws_api_gateway_deployment.updateUserProfileGtwDeploy.id
-  rest_api_id = aws_api_gateway_rest_api.updateUserProfileGtw.id
-  stage_name = var.STAGE
+  rest_api_id   = aws_api_gateway_rest_api.updateUserProfileGtw.id
+  stage_name    = var.STAGE
 }
 //url
 output "updateUserProfileGtwUrl" {
   value = "${aws_api_gateway_stage.updateUserProfileStage.invoke_url}/${aws_api_gateway_resource.updateUserProfileRoot.path_part}/${aws_api_gateway_resource.updateUserProfileUserId.path_part}"
 }
+//USER SERVICE -> ADD USER AVATAR LAMBDA
+resource "aws_lambda_function" "addUserAvatarLmb" {
+  filename         = data.archive_file.addUserAvatarLmb.output_path
+  function_name    = var.addUserAvatarLmbName
+  handler          = "${var.addUserAvatarLmbName}.handler"
+  runtime          = var.defaultRunTime
+  timeout          = 900
+  memory_size      = 256
+  role             = aws_iam_role.addUserAvatarRole.arn
+  source_code_hash = data.archive_file.addUserAvatarLmb.output_base64sha256
+  
+  environment {
+    variables = {
+      secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
+    }
+  }
+  
+  
+  depends_on = [
+    aws_iam_role_policy_attachment.attachAddUserAvatar,
+    data.archive_file.addUserAvatarLmb
+  ]
+}
+//policy
+resource "aws_iam_role_policy" "addUserAvatarPolicy" {
+  name   = "lambdaAddUserAvatar"
+  policy = data.aws_iam_policy_document.lambdaAddUserAvatarExecution.json
+  role   = aws_iam_role.addUserAvatarRole.id
+}
+//role
+resource "aws_iam_role" "addUserAvatarRole" {
+  name               = "executionForAddUserAvatar"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+//attachment
+resource "aws_iam_role_policy_attachment" "attachAddUserAvatar" {
+  role       = aws_iam_role.addUserAvatarRole.name
+  policy_arn = var.defaultPolicyArn
+}
+//END OF ADD USER AVATAR LAMBDA

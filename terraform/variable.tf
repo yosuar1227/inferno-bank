@@ -86,3 +86,9 @@ variable "updateProfileLmbName" {
   default = "update-profile-lambda"
   description = "variable just fopr the name of the update profile user lambda in user service"
 }
+
+variable "addUserAvatarLmbName" {
+  type = string
+  default= "add-user-avatar"
+  description = "variable just for the name of the add avatar for users lambda in user service"
+}
