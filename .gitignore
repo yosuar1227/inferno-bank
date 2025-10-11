@@ -1,29 +1,61 @@
-# Node.js
-node_modules/
+# ============================================================
+# 🔧 GENERALES
+# ============================================================
+.DS_Store
+Thumbs.db
+*.log
+*.txt
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# TypeScript build
+# ============================================================
+# ⚙️ NODE / TYPESCRIPT
+# ============================================================
+node_modules/
 dist/
+build/
+*.tsbuildinfo
 
-# Terraform
+# No subir bloqueos de npm/yarn (opcional)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ============================================================
+# 🌍 ENTORNOS Y CONFIGURACIONES
+# ============================================================
+.env
+*.env
+.env.*
+
+# ============================================================
+# ☁️ TERRAFORM
+# ============================================================
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate
 terraform.tfstate.backup
 *.tfstate.*
 crash.log
-
-# Terraform zips (ej: paquetes Lambda)
 terraform/*.zip
-terraform/credentials.txt
-terraform/provider.tf
 
-# Environment files
-.env
-*.env
+# ============================================================
+# 📦 MICROSERVICIOS (ignorar node_modules dentro de cada app)
+# ============================================================
+user-service/app/node_modules/
+notification-service/app/node_modules/
+card-service/app/node_modules/
 
-# Mac / Linux system files
-.DS_Store
-Thumbs.db
+# Si alguna Lambda genera build local
+user-service/app/dist/
+notification-service/app/dist/
+card-service/app/dist/
+
+# ============================================================
+# 🧪 OTROS ARCHIVOS TEMPORALES
+# ============================================================
+*.tmp
+*.swp
+*.bak
+*.old

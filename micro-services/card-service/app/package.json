@@ -1,13 +1,19 @@
 {
-  "name": "card-service",
+  "name": "app",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "build": "esbuild src/handlers/*.ts --bundle --outdir=dist/ --platform=node"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": ""
+  "description": "",
+  "dependencies": {
+    "esbuild": "^0.25.10"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.2",
+    "typescript": "^5.9.3"
+  }
 }
