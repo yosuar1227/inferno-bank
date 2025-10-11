@@ -1,5 +1,5 @@
 provider "aws" {
-    region = "us-east-2"
+    region = "DELETED FOR GITHUB AND AMAZON NOTIFICATION"
     access_key = "DELETED FOR GITHUB AND AMAZON NOTIFICATION"
     secret_key = "DELETED FOR GITHUB AND AMAZON NOTIFICATION"
 }
