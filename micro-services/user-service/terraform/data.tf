@@ -23,10 +23,13 @@ data "archive_file" "addUserAvatarLmb" {
   source_file = "${path.module}./app/dist/${var.addUserAvatarLmbName}.js"
   output_path = "${path.module}/files/lambda_add_user_avatar.zip"
 }
+
+data "archive_file" "getUserProfileLmb" {
+  type        = "zip"
+  source_file = "${path.module}./app/dist/${var.getUserProfileLmbName}.js"
+  output_path = "${path.module}/files/lambda_get_user_profile.zip"
+}
 //END OF USER SERVICE
-
-
-
 data "aws_iam_policy_document" "assume_role" {
   statement {
     effect = "Allow"
@@ -122,6 +125,32 @@ data "aws_iam_policy_document" "lambdaAddUserAvatarExecution" {
       "dynamodb:Query"
     ]
     resources = [aws_dynamodb_table.BankUserTable.arn]
+  }
+}
+
+data "aws_iam_policy_document" "lambdaGetUserProfile" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:Query"
+    ]
+    resources = [aws_dynamodb_table.BankUserTable.arn]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:GetObject"
+    ]
+    resources = [
+      "${aws_s3_bucket.UserServiceS3Bucket.arn}/*"
+    ]
+  }
+
+  statement {
+    effect    = "Allow"
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
   }
 }
 

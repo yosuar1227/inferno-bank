@@ -62,6 +62,11 @@ variable "HTTP_METHOD_PUT" {
   default = "PUT"
 }
 
+variable "HTTP_METHOD_GET" {
+  type = string
+  default = "GET"
+}
+
 variable "AMAZON_API_COM" {
   type = string
   default = "apigateway.amazonaws.com"
@@ -91,6 +96,12 @@ variable "addUserAvatarLmbName" {
   type = string
   default= "add-user-avatar"
   description = "variable just for the name of the add avatar for users lambda in user service"
+}
+
+variable "getUserProfileLmbName" {
+  type = string
+  default = "get-user-profile"
+  description = "variable just for the name of the get user profile lambda in user service"
 }
 
 //aws s3 bucket name

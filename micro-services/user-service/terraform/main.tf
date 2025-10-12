@@ -499,3 +499,107 @@ output "uploadUserAvatarGtwUrl" {
   value = "${aws_api_gateway_stage.uploadUserAvatarStage.invoke_url}/${aws_api_gateway_resource.uploadUserAvatarRoot.path_part}/${aws_api_gateway_resource.uploadUserAvatarUserId.path_part}/${aws_api_gateway_resource.uploadUserAvatarPathAvatar.path_part}"
 }
 //END UPLOAD USER AVATAR GTW
+//START GET USER PROFLE LAMBDA
+resource "aws_lambda_function" "getUserProfileLmb" {
+  filename         = data.archive_file.getUserProfileLmb.output_path
+  function_name    = var.getUserProfileLmbName
+  handler          = "${var.getUserProfileLmbName}.handler"
+  runtime          = var.defaultRunTime
+  timeout          = 900
+  memory_size      = 256
+  role             = aws_iam_role.getUserProfileRole.arn
+  source_code_hash = data.archive_file.getUserProfileLmb.output_base64sha256
+
+  environment {
+    variables = {
+      fileBucket : aws_s3_bucket.UserServiceS3Bucket.bucket
+      BankUserTable : aws_dynamodb_table.BankUserTable.arn
+      secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.attachGetUserProfile,
+    data.archive_file.getUserProfileLmb
+  ]
+}
+//policy
+resource "aws_iam_role_policy" "getUserProfilePolicy" {
+  name   = "lambdaGetUserProfile"
+  policy = data.aws_iam_policy_document.lambdaGetUserProfile.json
+  role   = aws_iam_role.getUserProfileRole.id
+}
+//role
+resource "aws_iam_role" "getUserProfileRole" {
+  name               = "executionGetUserProfile"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+//attachment
+resource "aws_iam_role_policy_attachment" "attachGetUserProfile" {
+  role       = aws_iam_role.getUserProfileRole.name
+  policy_arn = var.defaultPolicyArn
+}
+//END OF GET USER PROFILE LAMBDA
+//START WITH GATEWAY
+resource "aws_api_gateway_rest_api" "getUserProfileGtw" {
+  name        = "getUserProfileRestApi"
+  description = "rest api to get the user profile data"
+}
+//resource
+resource "aws_api_gateway_resource" "getUserProfileRoot" {
+  rest_api_id = aws_api_gateway_rest_api.getUserProfileGtw.id
+  parent_id   = aws_api_gateway_rest_api.getUserProfileGtw.root_resource_id
+  path_part   = "profile"
+}
+//resource -> {user_id} path
+resource "aws_api_gateway_resource" "getUserProfileUserId" {
+  rest_api_id = aws_api_gateway_rest_api.getUserProfileGtw.id
+  parent_id   = aws_api_gateway_resource.getUserProfileRoot.id
+  path_part   = "{user_id}"
+}
+//method
+resource "aws_api_gateway_method" "getUserProfileMethodGtw" {
+  rest_api_id   = aws_api_gateway_rest_api.getUserProfileGtw.id
+  resource_id   = aws_api_gateway_resource.getUserProfileUserId.id
+  http_method   = var.HTTP_METHOD_GET
+  authorization = var.NONE_AUTH
+}
+//conecting get user profile lambda with the gateway
+resource "aws_api_gateway_integration" "lmbGtwGetUserProfileIntegration" {
+  rest_api_id             = aws_api_gateway_rest_api.getUserProfileGtw.id
+  resource_id             = aws_api_gateway_resource.getUserProfileUserId.id
+  http_method             = aws_api_gateway_method.getUserProfileMethodGtw.http_method
+  integration_http_method = var.HTTP_METHOD_POST
+  type                    = var.AWS_PROXY
+  uri                     = aws_lambda_function.getUserProfileLmb.invoke_arn
+}
+//permissions
+resource "aws_lambda_permission" "getUserProfileGtwPermissions" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.getUserProfileLmbName
+  principal     = var.AMAZON_API_COM
+  source_arn    = "${aws_api_gateway_rest_api.getUserProfileGtw.execution_arn}/*/${var.HTTP_METHOD_GET}/${aws_api_gateway_resource.getUserProfileRoot.path_part}/${aws_api_gateway_resource.getUserProfileUserId.path_part}"
+  depends_on = [
+    aws_lambda_function.getUserProfileLmb
+  ]
+}
+//deploy
+resource "aws_api_gateway_deployment" "getUserProfileDeploy" {
+  rest_api_id = aws_api_gateway_rest_api.getUserProfileGtw.id
+  depends_on = [
+    aws_api_gateway_integration.lmbGtwGetUserProfileIntegration,
+    aws_lambda_permission.getUserProfileGtwPermissions
+  ]
+}
+//stage
+resource "aws_api_gateway_stage" "getUserProfileStage" {
+  deployment_id = aws_api_gateway_deployment.getUserProfileDeploy.id
+  rest_api_id   = aws_api_gateway_rest_api.getUserProfileGtw.id
+  stage_name    = var.STAGE
+}
+//url
+output "getUserProfileGtwUrl" {
+  value = "${aws_api_gateway_stage.getUserProfileStage.invoke_url}/${aws_api_gateway_resource.getUserProfileRoot.path_part}/${aws_api_gateway_resource.getUserProfileUserId.path_part}"
+}
+//END GATEWAY
