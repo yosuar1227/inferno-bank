@@ -7,6 +7,7 @@ import { schemaMiddleware } from "../middleware/schema.middleware.js";
 import { userSchema } from "../schema/user.schema.js";
 import { SecretManager } from "../secret-manager/secret-manager.js";
 import { HashService } from "../hash/hash.js";
+import { SqsService } from "../sqs/sqs.js";
 
 const registerUserLambda = async (
   event: APIGatewayEvent
@@ -20,6 +21,14 @@ const registerUserLambda = async (
   };
 
   item.password = await encryptPassword(item.password);
+
+  await new SqsService().send({
+    queueUrl: process.env.RequestCreateCardSQS || "",
+    data: {
+      type: "Testing execution for request creation card",
+      data: item
+    }
+  })
 
   const resp = await new DynamoService().save({
     tableName: process.env.BankUserTable || "",

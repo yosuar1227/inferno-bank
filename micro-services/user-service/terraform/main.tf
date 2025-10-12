@@ -93,6 +93,7 @@ resource "aws_lambda_function" "CreateRegisterUserLmb" {
     variables = {
       BankUserTable : aws_dynamodb_table.BankUserTable.arn
       secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
+      RequestCreateCardSQS : var.requestCreateCardSqsUrl
     }
   }
 

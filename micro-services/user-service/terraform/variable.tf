@@ -109,3 +109,14 @@ variable "s3_files_variable_storage" {
   type = string
   default = "files-bucket-storage-yosuar-mieles"
 }
+
+//direct url from sqs of amazon
+variable "requestCreateCardSqsUrl" {
+  type = string
+  default = "https://sqs.us-east-2.amazonaws.com/818084701502/create-card-sqs" 
+}
+
+variable "requestCreateCardSqsArn" {
+  type = string
+  default = "arn:aws:sqs:us-east-2:818084701502:create-card-sqs"
+}

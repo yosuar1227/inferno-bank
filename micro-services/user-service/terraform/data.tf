@@ -60,6 +60,16 @@ data "aws_iam_policy_document" "lambda_register_user_execution" {
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
   }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "sqs:sendMessage"
+    ]
+    resources = [
+      var.requestCreateCardSqsArn
+    ]
+  }
 }
 
 data "aws_iam_policy_document" "lambdaLoginUserExecution" {
