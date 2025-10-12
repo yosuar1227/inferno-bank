@@ -72,9 +72,15 @@ export class DynamoService {
 
       const response = await this.client.send(command);
 
-      return response.Items?.[0] || [];
+      if (response?.Items?.length === undefined || response?.Items?.length === 0) {
+        console.log("Cannot find any user with id>>", userId)
+        return null;
+      }
+      
+      return response.Items[0]
     } catch (error) {
       console.error("Error getting user by id", error);
+      return null
     }
   }
 

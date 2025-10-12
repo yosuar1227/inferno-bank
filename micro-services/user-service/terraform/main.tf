@@ -44,7 +44,7 @@ resource "aws_dynamodb_table" "BankUserTable" {
 
 //adding secret manager
 resource "aws_secretsmanager_secret" "InfernoBankSecret" {
-  name        = "InfernoBankSecret"
+  name        = "InfernoBankSecretV2"
   description = "I am in hell and even in hell I keep a secret"
 }
 
@@ -55,7 +55,30 @@ resource "aws_secretsmanager_secret_version" "InfernoBankSecretVersion" {
   })
 }
 
-//User service ----- register user lambda 1
+//adding S3 service
+resource "aws_s3_bucket" "UserServiceS3Bucket" {
+  bucket = var.s3_files_variable_storage
+}
+
+resource "aws_iam_policy" "UserServiceS3WriteAccess" {
+  name        = "USS3WriteAccessToBucket"
+  description = "this policy is only for write access"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect : "Allow"
+        Action : [
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "${aws_s3_bucket.UserServiceS3Bucket.arn}/*"
+      }
+    ]
+  })
+}
+
+//User service ----- REGISTER USER LAMNBDA
 resource "aws_lambda_function" "CreateRegisterUserLmb" {
   filename         = data.archive_file.registerUserLmb.output_path
   function_name    = var.registerUserLmbName //lambda name in aws console
@@ -167,7 +190,7 @@ output "registerUserGtwUrl" {
 }
 
 
-//User service ----- login user lambda
+//User service ----- LOGIN USER LAMBDA
 resource "aws_lambda_function" "LoginUserLmb" {
   filename         = data.archive_file.loginUserLmb.output_path
   function_name    = var.loginUserLmbName
@@ -264,7 +287,7 @@ output "loginUserGtwUrl" {
   value = "${aws_api_gateway_stage.loginUserGtwStage.invoke_url}/${aws_api_gateway_resource.loginUserRoot.path_part}"
 }
 
-//User service -> update user profile lambda
+//User service -> UPDATE PROFILE USER LAMBDA
 resource "aws_lambda_function" "UpdateUserProfileLmb" {
   filename         = data.archive_file.updateProfileLmb.output_path
   function_name    = var.updateProfileLmbName
@@ -375,14 +398,16 @@ resource "aws_lambda_function" "addUserAvatarLmb" {
   memory_size      = 256
   role             = aws_iam_role.addUserAvatarRole.arn
   source_code_hash = data.archive_file.addUserAvatarLmb.output_base64sha256
-  
+
   environment {
     variables = {
       secretBankName : aws_secretsmanager_secret.InfernoBankSecret.name
+      fileBucket : aws_s3_bucket.UserServiceS3Bucket.bucket
+      BankUserTable : aws_dynamodb_table.BankUserTable.arn
     }
   }
-  
-  
+
+
   depends_on = [
     aws_iam_role_policy_attachment.attachAddUserAvatar,
     data.archive_file.addUserAvatarLmb
@@ -405,3 +430,72 @@ resource "aws_iam_role_policy_attachment" "attachAddUserAvatar" {
   policy_arn = var.defaultPolicyArn
 }
 //END OF ADD USER AVATAR LAMBDA
+//START UPLOAD USER AVATAR GATEWAY
+resource "aws_api_gateway_rest_api" "uploadUserAvatarGtw" {
+  name        = "uploadUserAvatarRestApi"
+  description = "rest api for upload user avatar"
+}
+//resource gateway
+resource "aws_api_gateway_resource" "uploadUserAvatarRoot" {
+  rest_api_id = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  parent_id   = aws_api_gateway_rest_api.uploadUserAvatarGtw.root_resource_id
+  path_part   = "profile"
+}
+//resource gateway -> {user_id} path
+resource "aws_api_gateway_resource" "uploadUserAvatarUserId" {
+  rest_api_id = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  parent_id   = aws_api_gateway_resource.uploadUserAvatarRoot.id
+  path_part   = "{user_id}"
+}
+//resource gateway -> avatar path
+resource "aws_api_gateway_resource" "uploadUserAvatarPathAvatar" {
+  rest_api_id = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  parent_id   = aws_api_gateway_resource.uploadUserAvatarUserId.id
+  path_part   = "avatar"
+}
+//gtw method
+resource "aws_api_gateway_method" "uploadUserAvatarMethodGtw" {
+  rest_api_id   = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  resource_id   = aws_api_gateway_resource.uploadUserAvatarPathAvatar.id
+  http_method   = var.HTTP_METHOD_POST
+  authorization = var.NONE_AUTH
+}
+//conecting update user profile lambda with the gateway
+resource "aws_api_gateway_integration" "lmbGtwUploadUserAvatarIntegration" {
+  rest_api_id             = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  resource_id             = aws_api_gateway_resource.uploadUserAvatarPathAvatar.id
+  http_method             = aws_api_gateway_method.uploadUserAvatarMethodGtw.http_method
+  integration_http_method = var.HTTP_METHOD_POST
+  type                    = var.AWS_PROXY
+  uri                     = aws_lambda_function.addUserAvatarLmb.invoke_arn
+}
+//permissions
+resource "aws_lambda_permission" "uploadUserAvatarGtwPermissions" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.addUserAvatarLmbName
+  principal     = var.AMAZON_API_COM
+  source_arn    = "${aws_api_gateway_rest_api.uploadUserAvatarGtw.execution_arn}/*/${var.HTTP_METHOD_POST}/${aws_api_gateway_resource.uploadUserAvatarRoot.path_part}/${aws_api_gateway_resource.uploadUserAvatarUserId.path_part}/${aws_api_gateway_resource.uploadUserAvatarPathAvatar.path_part}"
+  depends_on = [
+    aws_lambda_function.addUserAvatarLmb
+  ]
+}
+//deploy
+resource "aws_api_gateway_deployment" "uploadUserAvatarGtwDeploy" {
+  rest_api_id = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  depends_on = [
+    aws_api_gateway_integration.lmbGtwUploadUserAvatarIntegration,
+    aws_lambda_permission.uploadUserAvatarGtwPermissions
+  ]
+}
+//stage
+resource "aws_api_gateway_stage" "uploadUserAvatarStage" {
+  deployment_id = aws_api_gateway_deployment.uploadUserAvatarGtwDeploy.id
+  rest_api_id   = aws_api_gateway_rest_api.uploadUserAvatarGtw.id
+  stage_name    = var.STAGE
+}
+//url
+output "uploadUserAvatarGtwUrl" {
+  value = "${aws_api_gateway_stage.uploadUserAvatarStage.invoke_url}/${aws_api_gateway_resource.uploadUserAvatarRoot.path_part}/${aws_api_gateway_resource.uploadUserAvatarUserId.path_part}/${aws_api_gateway_resource.uploadUserAvatarPathAvatar.path_part}"
+}
+//END UPLOAD USER AVATAR GTW

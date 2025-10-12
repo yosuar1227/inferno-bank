@@ -92,3 +92,9 @@ variable "addUserAvatarLmbName" {
   default= "add-user-avatar"
   description = "variable just for the name of the add avatar for users lambda in user service"
 }
+
+//aws s3 bucket name
+variable "s3_files_variable_storage" {
+  type = string
+  default = "files-bucket-storage-yosuar-mieles"
+}

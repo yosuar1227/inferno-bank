@@ -39,7 +39,7 @@ const userLoginLambda = async (
       name: user?.name || "",
     },
     saltValue,
-    { expiresIn: "1h" }
+    { expiresIn: "24h" }
   );
 
   return {

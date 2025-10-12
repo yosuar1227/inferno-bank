@@ -17,3 +17,9 @@ export const updateUserSchema = Joi.object({
     address: Joi.string().required(),
     phone: Joi.number().required(),
 })
+
+export const userAvatarSchema = Joi.object({
+    name: Joi.string().required(),
+    image: Joi.string().required(),
+    fileType: Joi.string().required(),
+})

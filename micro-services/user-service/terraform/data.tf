@@ -2,26 +2,26 @@
 //register user archive file
 data "archive_file" "registerUserLmb" {
   type        = "zip"
-  source_file = "${path.module}./micro-services/user-service/dist/${var.registerUserLmbName}.js"
-  output_path = "lambda_register_user.zip"
+  source_file = "${path.module}./app/dist/${var.registerUserLmbName}.js"
+  output_path = "${path.module}/files/lambda_register_user.zip"
 }
 
 data "archive_file" "loginUserLmb" {
   type        = "zip"
-  source_file = "${path.module}./micro-services/user-service/dist/${var.loginUserLmbName}.js"
-  output_path = "lambda_login_user.zip"
+  source_file = "${path.module}./app/dist/${var.loginUserLmbName}.js"
+  output_path = "${path.module}/files/lambda_login_user.zip"
 }
 
 data "archive_file" "updateProfileLmb" {
   type        = "zip"
-  source_file = "${path.module}./micro-services/user-service/dist/${var.updateProfileLmbName}.js"
-  output_path = "lambda_update_user_profile.zip"
+  source_file = "${path.module}./app/dist/${var.updateProfileLmbName}.js"
+  output_path = "${path.module}/files/lambda_update_user_profile.zip"
 }
 
 data "archive_file" "addUserAvatarLmb" {
   type        = "zip"
-  source_file = "${path.module}./micro-services/user-service/dist/${var.addUserAvatarLmbName}.js"
-  output_path = "lambda_add_user_avatar.zip"
+  source_file = "${path.module}./app/dist/${var.addUserAvatarLmbName}.js"
+  output_path = "${path.module}/files/lambda_add_user_avatar.zip"
 }
 //END OF USER SERVICE
 
@@ -90,7 +90,7 @@ data "aws_iam_policy_document" "lambdaUpdateUserProfileExecution" {
     resources = [aws_dynamodb_table.BankUserTable.arn]
   }
 
-   statement {
+  statement {
     effect    = "Allow"
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
@@ -102,6 +102,26 @@ data "aws_iam_policy_document" "lambdaAddUserAvatarExecution" {
     effect    = "Allow"
     actions   = ["secretsmanager:GetSecretValue"]
     resources = [aws_secretsmanager_secret.InfernoBankSecret.arn]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+      "s3:GetObject"
+    ]
+    resources = [
+      "${aws_s3_bucket.UserServiceS3Bucket.arn}/*"
+    ]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:Query"
+    ]
+    resources = [aws_dynamodb_table.BankUserTable.arn]
   }
 }
 
