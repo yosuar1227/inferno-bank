@@ -25,8 +25,8 @@ const registerUserLambda = async (
   await new SqsService().send({
     queueUrl: process.env.RequestCreateCardSQS || "",
     data: {
-      type: "Testing execution for request creation card",
-      data: item
+      type: "CARD_PROCCESOR_FOR_NEW_USER",
+      data: item.uuid
     }
   })
 

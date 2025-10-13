@@ -1,4 +1,29 @@
 //main tf for card service
+
+//creating dynamo db table for card service
+resource "aws_dynamodb_table" "BankCardTable" {
+  name = var.dynamoDbTable
+  billing_mode = var.defaultBillingModeDynamoDb
+  read_capacity = 20
+  write_capacity = 20
+  hash_key = var.hasKeyDynamoDbTable
+  range_key = var.rangeKeyDynamoDbTable
+
+  attribute {
+    name = var.hasKeyDynamoDbTable
+    type = "S"
+  }
+
+  attribute {
+    name = var.rangeKeyDynamoDbTable
+    type = "S"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
 //DLQ FOR THE NEXT SQS
 resource "aws_sqs_queue" "dlqCreateCardSqs" {
   name = var.createCardSqsDlq
@@ -26,6 +51,12 @@ resource "aws_lambda_function" "createRequestCardLmb" {
   role             = aws_iam_role.createRequestCardRole.arn
   source_code_hash = data.archive_file.createRequestCardLmb.output_base64sha256
   publish = true
+
+  environment {
+    variables = {
+      BankUserCardTable: aws_dynamodb_table.BankCardTable.arn
+    }
+  }
 
   depends_on = [
     aws_iam_role_policy_attachment.createRequestCardAttach,

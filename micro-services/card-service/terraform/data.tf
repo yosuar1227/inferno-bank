@@ -32,4 +32,15 @@ data "aws_iam_policy_document" "lambdaCreateRequestCardExecution" {
       aws_sqs_queue.createCardSqs.arn
     ]
   }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "dynamodb:PutItem"
+    ]
+    resources = [
+      aws_dynamodb_table.BankCardTable.arn
+    ]
+  }
+
 }

@@ -31,6 +31,28 @@ variable "defaultPolicyArn" {
   description = "default policy arn for this project and lambdas"
 }
 
+variable "dynamoDbTable" {
+  type = string
+  default = "bank-card-table"
+  description = "dynamo db table for card service"
+}
+
+variable "defaultBillingModeDynamoDb" {
+  type = string
+  default = "PROVISIONED"
+  description = "default billing mode value for dynamo db"
+}
+
+variable "hasKeyDynamoDbTable" {
+  type = string
+  default = "uuid"
+}
+
+variable "rangeKeyDynamoDbTable" {
+  type = string
+  default = "createdAt"
+}
+
 //lambda names
 variable "createRequestCardLmbName" {
   type = string
