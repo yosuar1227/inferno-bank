@@ -29,6 +29,17 @@ variable "AMAZON_API_COM" {
   description = "principal url for apigateway"
 }
 
+variable "region" {
+  type = string
+  default = "us-east-2"
+}
+
+//aws s3 bucket name
+variable "s3_files_variable_storage" {
+  type    = string
+  default = "files-bucket-storage-yosuar-mieles"
+}
+
 variable "vpc_cidr" {
   type        = string
   description = "cidr block for vpc"
@@ -78,4 +89,9 @@ variable "lambda_function_name" {
 variable "lambda_get_catalog_data" {
   type    = string
   default = "get-catalog-data"
+}
+
+variable "lambda_update_catalog_data" {
+  type    = string
+  default = "update-catalog-data"
 }

@@ -14,6 +14,12 @@ data "archive_file" "getCatalogDataLmb" {
   output_path = "${path.module}/lambda_get_catalog_data.zip"
 }
 
+data "archive_file" "updateCatalogData" {
+  type        = "zip"
+  source_file = "${path.module}/../app/dist/handlers/${var.lambda_update_catalog_data}.js"
+  output_path = "${path.module}/lambda_update_catalog_data.zip"
+}
+
 data "aws_iam_policy_document" "assume_role" {
   statement {
     effect = "Allow"
@@ -73,6 +79,40 @@ data "aws_iam_policy_document" "lambdaGetCatalogExecution" {
       "ec2:DetachNetworkInterface"
     ]
     resources = ["*"]
+  }
+}
+
+data "aws_iam_policy_document" "lambdaUpdateCatalogDataExecution" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "logs:CreateLogGroup",
+      "logs:CreateLogStream",
+      "logs:PutLogEvents"
+    ]
+    resources = ["arn:aws:logs:*:*:*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "ec2:CreateNetworkInterface",
+      "ec2:DescribeNetworkInterfaces",
+      "ec2:DeleteNetworkInterface",
+      "ec2:AttachNetworkInterface",
+      "ec2:DetachNetworkInterface"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
+    actions = [
+      "s3:PutObject",
+    ]
+    resources = [
+      "${aws_s3_bucket.UserServiceS3Bucket.arn}/*"
+    ]
   }
 }
 

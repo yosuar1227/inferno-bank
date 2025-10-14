@@ -6,18 +6,17 @@ import { APIGatewayProxyResult } from "aws-lambda";
 const getCatalogDataLambda = async (): Promise<APIGatewayProxyResult> => {
     const client = await getRedisClient();
     const key = `${PRODUCT_SERVICE_KEY}:${CATALOG}`;
-    let msj = "";
-    let data: any = null;
+    let msj = "KEY DOES NOT EXITS RETURING EMPTY LIST";
+    let data: any = [];
 
-    const keyExits = await client.exists(key);
+    const redisData = await client.get(key);
 
-    if (keyExits) {
+    console.log("REDIS DATA::", redisData);
+
+    if (redisData !== null) {
         msj = "KEY EXITS RETURING DATA";
-        data = await client.hGetAll(key);
+        data = JSON.parse(redisData as string);
     }
-
-    msj = "KEY DOES NOT EXITS RETURING EMPTY LIST";
-    data = [];
 
     return {
         statusCode: 200,

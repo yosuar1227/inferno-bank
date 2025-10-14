@@ -1,3 +1,37 @@
+//adding S3 service
+resource "aws_s3_bucket" "UserServiceS3Bucket" {
+  bucket = var.s3_files_variable_storage
+}
+
+resource "aws_iam_policy" "UserServiceS3WriteAccess" {
+  name        = "USS3WriteAccessToBucket"
+  description = "this policy is only for write access"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect : "Allow"
+        Action : [
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "${aws_s3_bucket.UserServiceS3Bucket.arn}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_vpc_endpoint" "s3_endpoint" {
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${var.region}.s3"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = [aws_route_table.private.id]
+
+  tags = {
+    Name = "s3-endpoint"
+  }
+}
+
 // configuracion del cluster
 // necesitamos tablas de enrutamiento en AWS -> Redes de computadora
 // VPC enpoints -> redes virtuales a nivel de cloud
@@ -90,7 +124,8 @@ resource "aws_security_group" "redis_sg" {
     protocol    = "tcp"
     security_groups = [
       aws_security_group.lambda_sg.id,
-      aws_security_group.getCatalogDataLmbSg.id
+      aws_security_group.getCatalogDataLmbSg.id,
+      aws_security_group.updateCatalogdataSg.id
     ]
   }
 
@@ -280,5 +315,126 @@ resource "aws_api_gateway_stage" "getCatalogDataStage" {
 //url
 output "getCatalogDataGtwUrl" {
   value = "${aws_api_gateway_stage.getCatalogDataStage.invoke_url}/${aws_api_gateway_resource.getCatalogDataRoot.path_part}"
+}
+//END GATEWAY
+//LAMBDA -> Update catalog data
+resource "aws_lambda_function" "updateCatalogDataLmb" {
+  filename         = data.archive_file.updateCatalogData.output_path
+  function_name    = var.lambda_update_catalog_data
+  handler          = "dist/${var.lambda_update_catalog_data}.handler"
+  runtime          = var.defaultLmbRunTime
+  timeout          = 900
+  memory_size      = 256
+  role             = aws_iam_role.roleUpdateCatalogDataLmb.arn
+  source_code_hash = data.archive_file.updateCatalogData.output_base64sha256
+
+
+  vpc_config {
+    subnet_ids = aws_subnet.private[*].id
+    security_group_ids = [
+      aws_security_group.updateCatalogdataSg.id
+    ]
+  }
+
+  environment {
+    variables = {
+      REDIS_ENDPOINT = aws_elasticache_cluster.redis_cluster.cache_nodes[0].address
+      REDIS_PORT     = aws_elasticache_cluster.redis_cluster.port
+      fileBucket     = aws_s3_bucket.UserServiceS3Bucket.bucket
+    }
+  }
+
+  depends_on = [
+    aws_iam_role_policy.policyUpdateCatalogDataLmb,
+    data.archive_file.updateCatalogData,
+    aws_elasticache_cluster.redis_cluster
+  ]
+}
+//policy
+resource "aws_iam_role_policy" "policyUpdateCatalogDataLmb" {
+  name   = "lambdaUpdateCatalogData-policy"
+  policy = data.aws_iam_policy_document.lambdaUpdateCatalogDataExecution.json
+  role   = aws_iam_role.roleUpdateCatalogDataLmb.id
+}
+//role
+resource "aws_iam_role" "roleUpdateCatalogDataLmb" {
+  name               = "executionForUpdateCatalogDataLmb-role"
+  assume_role_policy = data.aws_iam_policy_document.assume_role.json
+}
+//security group for lambda
+resource "aws_security_group" "updateCatalogdataSg" {
+  name        = "lambdaUpdateCatalogData-sg"
+  description = "security group for lambda update cadatalog data"
+  vpc_id      = aws_vpc.main.id
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+//END LAMBDA
+//START API GATEWAY FOR THE LAMBDA
+resource "aws_api_gateway_rest_api" "updateCatalogDataGtw" {
+  name        = "updateCatalogDataRestApi"
+  description = "rest api for the update catalog data"
+}
+//resource root path
+resource "aws_api_gateway_resource" "updateCatalogDataRoot" {
+  rest_api_id = aws_api_gateway_rest_api.updateCatalogDataGtw.id
+  parent_id   = aws_api_gateway_rest_api.updateCatalogDataGtw.root_resource_id
+  path_part   = "catalog"
+}
+//resource update path
+resource "aws_api_gateway_resource" "updateCatalogDataUpdatePath" {
+  rest_api_id = aws_api_gateway_rest_api.updateCatalogDataGtw.id
+  parent_id   = aws_api_gateway_resource.updateCatalogDataRoot.id
+  path_part   = "update"
+}
+//gtw method
+resource "aws_api_gateway_method" "updateCatalogDataMethodGtw" {
+  rest_api_id   = aws_api_gateway_rest_api.updateCatalogDataGtw.id
+  resource_id   = aws_api_gateway_resource.updateCatalogDataUpdatePath.id
+  http_method   = var.HTTP_METHOD_POST
+  authorization = var.NONE_AUTH
+}
+//connect lambda with gateway
+resource "aws_api_gateway_integration" "lmbGtwUpdateCatalogDataIntegration" {
+  rest_api_id             = aws_api_gateway_rest_api.updateCatalogDataGtw.id
+  resource_id             = aws_api_gateway_resource.updateCatalogDataUpdatePath.id
+  http_method             = aws_api_gateway_method.updateCatalogDataMethodGtw.http_method
+  integration_http_method = var.HTTP_METHOD_POST
+  type                    = var.AWS_PROXY
+  uri                     = aws_lambda_function.updateCatalogDataLmb.invoke_arn
+}
+//permissions
+resource "aws_lambda_permission" "updateCatalogDataGtwPermission" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  function_name = var.lambda_update_catalog_data
+  principal     = var.AMAZON_API_COM
+  source_arn    = "${aws_api_gateway_rest_api.updateCatalogDataGtw.execution_arn}/*/${var.HTTP_METHOD_POST}/${aws_api_gateway_resource.updateCatalogDataRoot.path_part}/${aws_api_gateway_resource.updateCatalogDataUpdatePath.path_part}"
+  depends_on = [
+    aws_lambda_function.updateCatalogDataLmb
+  ]
+}
+//deploy
+resource "aws_api_gateway_deployment" "updateCatalogDataDeploy" {
+  rest_api_id = aws_api_gateway_rest_api.updateCatalogDataGtw.id
+  depends_on = [
+    aws_api_gateway_integration.lmbGtwUpdateCatalogDataIntegration,
+    aws_lambda_permission.updateCatalogDataGtwPermission
+  ]
+}
+//stage
+resource "aws_api_gateway_stage" "updateCatalogDataStage" {
+  deployment_id = aws_api_gateway_deployment.updateCatalogDataDeploy.id
+  rest_api_id   = aws_api_gateway_rest_api.updateCatalogDataGtw.id
+  stage_name    = var.STAGE
+}
+//url
+output "updateCatalogDataGtwUrl" {
+  value = "${aws_api_gateway_stage.updateCatalogDataStage.invoke_url}/${aws_api_gateway_resource.updateCatalogDataRoot.path_part}/${aws_api_gateway_resource.updateCatalogDataUpdatePath.path_part}"
 }
 //END GATEWAY
