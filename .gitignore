@@ -47,6 +47,9 @@ user-service/app/node_modules/
 notification-service/app/node_modules/
 card-service/app/node_modules/
 /micro-services/*/terraform/provider.tf
+/micro-services/*/terraform/providers.tf
+/micro-services/*/terraform/*.zip
+/micro-services/*/terraform/files/*.zip
 
 # Si alguna Lambda genera build local
 user-service/app/dist/
