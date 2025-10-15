@@ -25,7 +25,9 @@ const getCatalogDataLambda = async (): Promise<APIGatewayProxyResult> => {
             data: data,
         }),
         headers: {
-            "Content-type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "OPTIONS,GET"
         },
     };
 };
